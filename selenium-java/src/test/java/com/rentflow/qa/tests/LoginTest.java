@@ -15,7 +15,7 @@ public class LoginTest extends BaseTest {
         driver.get(BASE_URL + "/login");
 
         LoginPage loginPage = new LoginPage(driver);
-        loginPage.login("landlord@rentflow.dev", "Password123");
+       loginPage.login("sarah.landlord@rentflow.dev", "Password123");
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(ExpectedConditions.urlContains("/dashboard"));
