@@ -15,7 +15,7 @@ public class LoginTest extends BaseTest {
         driver.get(BASE_URL + "/login");
 
         LoginPage loginPage = new LoginPage(driver);
-       loginPage.login("sarah.landlord@rentflow.dev", "Password123");
+        loginPage.login("sarah.landlord@rentflow.dev", "Password123");
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(ExpectedConditions.urlContains("/dashboard"));
@@ -28,7 +28,13 @@ public class LoginTest extends BaseTest {
         driver.get(BASE_URL + "/login");
 
         LoginPage loginPage = new LoginPage(driver);
-        loginPage.login("landlord@rentflow.dev", "wrongpassword");
+        // Deliberately using an email that doesn't exist at all, rather than a real
+        // account's wrong password — this avoids ever contributing failed attempts
+        // toward the rate limiter on an account another test (or you, manually)
+        // relies on for a VALID login. The app still correctly rejects this with
+        // the same "invalid credentials" error either way, so the test still proves
+        // the same thing, just without any risk of poisoning another test.
+        loginPage.login("nonexistent.qa.test@rentflow.dev", "wrongpassword");
 
         String error = loginPage.getErrorMessage();
         assertFalse(error.isEmpty());
