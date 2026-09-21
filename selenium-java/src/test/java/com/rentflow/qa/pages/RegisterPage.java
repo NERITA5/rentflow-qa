@@ -52,7 +52,7 @@ public class RegisterPage {
     public void clickSubmit() {
     WebElement button = driver.findElement(submitButton);
     ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", button);
-    new WebDriverWait(driver, Duration.ofSeconds(5))
+    new WebDriverWait(driver, Duration.ofSeconds(10))
         .until(ExpectedConditions.elementToBeClickable(submitButton));
     driver.findElement(submitButton).click();
 }

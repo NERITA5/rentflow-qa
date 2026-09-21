@@ -30,15 +30,22 @@ public class PaymentsPage {
         driver.findElement(amountField).sendKeys(amount);
     }
 
+    /**
+     * Sets the date input's value in a way React actually notices. A plain
+     * element.value = "..." assignment via JavaScript changes what's visually shown
+     * but never fires the 'input' event React listens for, so React's own state stays
+     * out of sync with what's on screen. The fix: call the native browser value setter
+     * directly (bypassing React's override), then manually dispatch a real 'input'
+     * event so React picks up the change.
+     */
     public void setDueDate(String date) {
-        // HTML <input type="date"> elements are notoriously unreliable with sendKeys() —
-        // Chrome's native date picker doesn't always accept typed keystrokes the way a
-        // plain text field does, and behavior can vary depending on locale/OS settings.
-        // Setting the value directly via JavaScript sidesteps that flakiness entirely.
-        // Expected format here is yyyy-MM-dd (e.g. "2026-12-01"), matching the input's
-        // native value format regardless of how the date is visually displayed on screen.
         WebElement field = driver.findElement(dueDateField);
-        ((JavascriptExecutor) driver).executeScript("arguments[0].value = arguments[1];", field, date);
+        String script =
+            "var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;" +
+            "nativeSetter.call(arguments[0], arguments[1]);" +
+            "var event = new Event('input', { bubbles: true });" +
+            "arguments[0].dispatchEvent(event);";
+        ((JavascriptExecutor) driver).executeScript(script, field, date);
     }
 
     public void selectMethod(String method) {
