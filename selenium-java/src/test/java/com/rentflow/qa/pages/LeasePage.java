@@ -5,12 +5,16 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 
+import java.time.Duration;
 import java.util.List;
 
 public class LeasePage {
 
     private WebDriver driver;
+    private WebDriverWait wait;
 
     private By newLeaseButton = By.cssSelector("[data-testid='lease-create']");
     private By tenantSearchField = By.cssSelector("[data-testid='lease-tenant-search']");
@@ -25,16 +29,29 @@ public class LeasePage {
 
     public LeasePage(WebDriver driver) {
         this.driver = driver;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
     }
 
     public void clickNewLease() {
-        driver.findElement(newLeaseButton).click();
+        WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(newLeaseButton));
+        scrollAndClick(btn);
     }
 
+    /**
+     * Types into the tenant search box, then explicitly waits for at least one
+     * matching option to actually appear before clicking it. The dropdown only
+     * re-renders AFTER React processes the typed input, so grabbing the option
+     * list immediately after sendKeys() risks a race condition where the list
+     * hasn't updated yet.
+     */
     public void searchAndSelectTenant(String searchText) {
-        driver.findElement(tenantSearchField).sendKeys(searchText);
+        WebElement searchInput = wait.until(ExpectedConditions.visibilityOfElementLocated(tenantSearchField));
+        searchInput.clear();
+        searchInput.sendKeys(searchText);
+        
+        wait.until(ExpectedConditions.presenceOfElementLocated(tenantOption));
         List<WebElement> options = driver.findElements(tenantOption);
-        options.get(0).click();
+        scrollAndClick(options.get(0));
     }
 
     /**
@@ -44,7 +61,8 @@ public class LeasePage {
      * state from all prior testing, not something this test can predict in advance.
      */
     public String selectFirstAvailableUnit() {
-        Select dropdown = new Select(driver.findElement(unitDropdown));
+        WebElement dropdownElement = wait.until(ExpectedConditions.visibilityOfElementLocated(unitDropdown));
+        Select dropdown = new Select(dropdownElement);
         List<WebElement> options = dropdown.getOptions();
         if (options.size() <= 1) {
             throw new IllegalStateException(
@@ -59,16 +77,11 @@ public class LeasePage {
     }
 
     /**
-     * Sets a date input's value in a way React actually notices.
-     *
-     * Just doing element.value = "..." via JavaScript changes what's visually shown
-     * in the browser, but React's controlled-component state never finds out — React
-     * only reacts to a genuine 'input' event, and a plain value assignment doesn't
-     * fire one. The fix: call the BROWSER'S OWN original value setter (bypassing
-     * React's override of it) via its prototype, THEN manually dispatch a real
-     * 'input' event. This is a well-known, standard workaround whenever you need to
-     * set a React-controlled input's value from outside React itself — exactly what
-     * Selenium is doing here.
+     * Sets a date input's value in a way React actually notices. A plain
+     * element.value = "..." assignment via JavaScript never fires the 'input'
+     * event React listens for, so React's own state stays out of sync with what's
+     * visually on screen. The fix: call the native browser value setter directly
+     * (bypassing React's override), then manually dispatch a real 'input' event.
      */
     public void setDates(String startDate, String endDate) {
         setReactControlledDateValue(startDateField, startDate);
@@ -76,13 +89,27 @@ public class LeasePage {
     }
 
     private void setReactControlledDateValue(By locator, String value) {
-        WebElement element = driver.findElement(locator);
+        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(locator));
         String script =
             "var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;" +
             "nativeSetter.call(arguments[0], arguments[1]);" +
             "var event = new Event('input', { bubbles: true });" +
             "arguments[0].dispatchEvent(event);";
         ((JavascriptExecutor) driver).executeScript(script, element, value);
+    }
+
+    public void clickAcceptLease() {
+        WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(acceptButton));
+        scrollAndClick(btn);
+    }
+
+    private void scrollAndClick(WebElement element) {
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
+        try {
+            element.click();
+        } catch (Exception e) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+        }
     }
 
     public By getReviewButtonLocator() {
@@ -94,7 +121,7 @@ public class LeasePage {
     }
 
     public String getToastMessage() {
-        return driver.findElement(toast).getText();
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(toast)).getText();
     }
 
     public By getAcceptButtonLocator() {
