@@ -17,12 +17,23 @@ import java.time.Duration;
 public abstract class BaseTest {
 
     protected WebDriver driver;
-    public static final String BASE_URL = "http://localhost:3000";
-
+    public static final String BASE_URL = System.getProperty("baseUrl", "http://localhost:3000");
     @BeforeEach
     void setUp() {
         WebDriverManager.chromedriver().setup();
         ChromeOptions options = new ChromeOptions();
+
+        // GitHub Actions (and most CI systems) automatically set the CI environment
+        // variable to "true". We use that to decide whether to run headless (no visible
+        // browser window — required on a server with no display) or with a real visible
+        // window (better for us watching it locally and debugging failures).
+        boolean isCI = "true".equalsIgnoreCase(System.getenv("CI"));
+        if (isCI) {
+            options.addArguments("--headless=new");
+            options.addArguments("--no-sandbox");
+            options.addArguments("--disable-dev-shm-usage");
+        }
+
         driver = new ChromeDriver(options);
         driver.manage().window().maximize();
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(2));
@@ -35,12 +46,6 @@ public abstract class BaseTest {
         }
     }
 
-    /**
-     * Scrolls an element into view, waits until it's genuinely clickable (visible,
-     * enabled, not covered by anything), then clicks it. Use this instead of a plain
-     * findElement(...).click() for any button that might be below the fold or that
-     * becomes enabled only after an async page load finishes.
-     */
     protected void scrollAndClick(By locator) {
         WebElement element = driver.findElement(locator);
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);

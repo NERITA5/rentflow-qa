@@ -5,13 +5,15 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import java.time.Duration;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.time.Duration;
 
 public class RegisterPage {
 
     private WebDriver driver;
+    private WebDriverWait wait;
 
     private By nameField = By.cssSelector("[data-testid='register-name']");
     private By emailField = By.cssSelector("[data-testid='register-email']");
@@ -23,39 +25,52 @@ public class RegisterPage {
 
     public RegisterPage(WebDriver driver) {
         this.driver = driver;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
     }
 
     public void enterName(String name) {
-        driver.findElement(nameField).sendKeys(name);
+        WebElement el = wait.until(ExpectedConditions.visibilityOfElementLocated(nameField));
+        el.clear();
+        el.sendKeys(name);
     }
 
     public void enterEmail(String email) {
-        driver.findElement(emailField).sendKeys(email);
+        WebElement el = wait.until(ExpectedConditions.visibilityOfElementLocated(emailField));
+        el.clear();
+        el.sendKeys(email);
     }
 
     public void enterPhone(String phone) {
-        driver.findElement(phoneField).sendKeys(phone);
+        WebElement el = wait.until(ExpectedConditions.visibilityOfElementLocated(phoneField));
+        el.clear();
+        el.sendKeys(phone);
     }
 
     public void enterPassword(String password) {
-        driver.findElement(passwordField).sendKeys(password);
+        WebElement el = wait.until(ExpectedConditions.visibilityOfElementLocated(passwordField));
+        el.clear();
+        el.sendKeys(password);
     }
 
     public void selectRole(String role) {
-        // register-role is a real <select> dropdown, not a text field — Selenium needs
-        // its dedicated Select class to interact with dropdown options correctly.
-        // "role" here must exactly match an <option> value: "TENANT" or "LANDLORD".
-        Select dropdown = new Select(driver.findElement(roleDropdown));
+        WebElement dropdownElement = wait.until(ExpectedConditions.visibilityOfElementLocated(roleDropdown));
+        Select dropdown = new Select(dropdownElement);
         dropdown.selectByValue(role);
     }
 
     public void clickSubmit() {
-    WebElement button = driver.findElement(submitButton);
-    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", button);
-    new WebDriverWait(driver, Duration.ofSeconds(10))
-        .until(ExpectedConditions.elementToBeClickable(submitButton));
-    driver.findElement(submitButton).click();
-}
+        WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(submitButton));
+        scrollAndClick(btn);
+    }
+
+    private void scrollAndClick(WebElement element) {
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
+        try {
+            element.click();
+        } catch (Exception e) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+        }
+    }
 
     public void register(String name, String email, String phone, String password, String role) {
         enterName(name);
@@ -67,6 +82,6 @@ public class RegisterPage {
     }
 
     public String getErrorMessage() {
-        return driver.findElement(errorMessage).getText();
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(errorMessage)).getText();
     }
 }
